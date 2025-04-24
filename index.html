@@ -62,7 +62,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Shipping Price Calculator</h1>
+    <h1> Koean Post International Rate</h1>
     <div class="country-options" id="countryOptions"></div>
     <input type="number" id="weightInput" placeholder="Enter weight in kg" min="0.1" step="0.1">
     <button onclick="calculateShipping()">Get Price</button>
@@ -101,7 +101,7 @@
       const resultDiv = document.getElementById('result');
 
       if (!selected || isNaN(weight)) {
-        resultDiv.textContent = '❌ Please select a country and enter a valid weight.';
+        resultDiv.textContent = 'Please select a country and enter a valid weight.';
         resultDiv.style.color = 'red';
         return;
       }
@@ -111,10 +111,10 @@
       const applicableRate = rates.find(r => r.weight >= weight);
 
       if (!applicableRate) {
-        resultDiv.textContent = `❌ No rate available for ${weight}kg to ${country}.`;
+        resultDiv.textContent = `No rate available for ${weight}kg to ${country}.`;
         resultDiv.style.color = 'red';
       } else {
-        resultDiv.textContent = `✅ Shipping to ${country} for ${weight}kg: ₩${applicableRate.price}`;
+        resultDiv.textContent = `Shipping to ${country} for ${weight}kg: ₩${applicableRate.price}`;
         resultDiv.style.color = 'green';
       }
     }

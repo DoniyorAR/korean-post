@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shipping Price Calculator</title>
   <style>
     body {
@@ -18,7 +18,7 @@
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    h1, h2 {
+    h1 {
       text-align: center;
       color: #333;
     }
@@ -54,30 +54,17 @@
     .service-options label {
       margin-right: 10px;
     }
-    .formula-box {
-      margin-top: 20px;
-      padding: 15px;
-      background: #e8f0fe;
-      border-radius: 8px;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Korean Post International Shipping</h1>
-
-    <div class="formula-box">
-      <h2>Volumetric Weight Formula</h2>
-      <p><b>Volume Weight (kg) = (Width (cm) × Length (cm) × Height (cm)) ÷ 6000</b></p>
-      <p>Shipping is calculated based on <b>the greater of actual weight and volumetric weight.</b></p>
-    </div>
-
+    
     <div class="controls">
       <div class="service-options">
-        <label><input type="radio" name="service" value="EMS" checked> EMS</label>
-        <label><input type="radio" name="service" value="EMS Premium"> EMS Premium</label>
-        <label><input type="radio" name="service" value="Small Parcel"> Small Parcel</label>
+        <label><input type="radio" name="service" value="EMS_Price_KRW" checked> EMS</label>
+        <label><input type="radio" name="service" value="EMS_Premium_KRW"> EMS Premium</label>
+        <label><input type="radio" name="service" value="Small_Parcel_KRW"> Small Parcel</label>
       </div>
 
       <select id="countrySelect">
@@ -96,25 +83,42 @@
   </div>
 
   <script>
-    const ratesData = {}; // ratesData[country][service] = list of {weight, price}
-
+    const ratesData = {};
+  
     fetch('final.csv')
       .then(response => response.text())
       .then(text => {
         const lines = text.trim().split('\n');
-        lines.shift(); // remove header
-
+        const headers = lines.shift().split(',');
+  
+        const countryIdx = headers.indexOf('Country');
+        const weightIdx = headers.indexOf('Weight_kg');
+        const emsIdx = headers.indexOf('EMS_Price_KRW');
+        const emspreIdx = headers.indexOf('EMS_Premium_KRW');
+        const smallIdx = headers.indexOf('Small_Parcel_KRW');
+  
         for (const line of lines) {
-          const [country, weight, service, price] = line.split(',');
-          if (!ratesData[country]) ratesData[country] = { "EMS": [], "EMS Premium": [], "Small Parcel": [] };
-          if (ratesData[country][service]) {
-            ratesData[country][service].push({
-              weight: parseFloat(weight),
-              price: parseInt(price)
-            });
-          }
+          const cols = line.split(',');
+          const country = cols[countryIdx].trim(); // important: trim here
+          const weight = parseFloat(cols[weightIdx]);
+          const ems = parseFloat(cols[emsIdx]);
+          const emspre = parseFloat(cols[emspreIdx]);
+          const small = parseFloat(cols[smallIdx]);
+  
+          if (!country) continue; // Skip if country is empty
+  
+          if (!ratesData[country]) ratesData[country] = {
+            EMS_Price_KRW: [],
+            EMS_Premium_KRW: [],
+            Small_Parcel_KRW: []
+          };
+  
+          if (!isNaN(ems)) ratesData[country]["EMS_Price_KRW"].push({ weight, price: ems });
+          if (!isNaN(emspre)) ratesData[country]["EMS_Premium_KRW"].push({ weight, price: emspre });
+          if (!isNaN(small)) ratesData[country]["Small_Parcel_KRW"].push({ weight, price: small });
         }
-
+  
+        // Fill the country dropdown AFTER all processing
         const select = document.getElementById('countrySelect');
         Object.keys(ratesData).sort().forEach(country => {
           const option = document.createElement('option');
@@ -123,50 +127,50 @@
           select.appendChild(option);
         });
       });
-
+  
     function calculateShipping() {
       const service = document.querySelector('input[name="service"]:checked').value;
-      const country = document.getElementById('countrySelect').value;
+      const country = document.getElementById('countrySelect').value.trim();
       const realWeight = parseFloat(document.getElementById('weightInput').value);
       const width = parseFloat(document.getElementById('widthInput').value);
       const length = parseFloat(document.getElementById('lengthInput').value);
       const height = parseFloat(document.getElementById('heightInput').value);
       const resultDiv = document.getElementById('result');
-
+  
       if (!country || isNaN(realWeight) || isNaN(width) || isNaN(length) || isNaN(height)) {
         resultDiv.textContent = 'Please complete all fields correctly.';
         resultDiv.style.color = 'red';
         return;
       }
-
+  
       const volumetricWeight = (width * length * height) / 6000;
-      const finalWeight = Math.max(realWeight, volumetricWeight);
-
+      const chargeableWeight = Math.max(realWeight, volumetricWeight);
+      const roundedWeight = Math.ceil(chargeableWeight * 10) / 10; // round up to nearest 0.1kg
+  
       const rates = ratesData[country] && ratesData[country][service];
       if (!rates || rates.length === 0) {
-        resultDiv.textContent = `No rates available for ${service} to ${country}.`;
+        resultDiv.textContent = `No rates available for ${service.replace(/_/g, ' ')} to ${country}.`;
         resultDiv.style.color = 'red';
         return;
       }
-
-      // Find the nearest bigger available weight
+  
       const sortedRates = rates.sort((a, b) => a.weight - b.weight);
-      let applicableRate = sortedRates.find(r => r.weight >= finalWeight);
-
+      const applicableRate = sortedRates.find(r => r.weight >= roundedWeight);
+  
       if (!applicableRate) {
-        applicableRate = sortedRates[sortedRates.length - 1]; // take last (maximum available)
+        resultDiv.textContent = `No rate found for ${roundedWeight.toFixed(1)}kg to ${country} (${service.replace(/_/g, ' ')}).`;
+        resultDiv.style.color = 'red';
+      } else {
+        resultDiv.innerHTML = `
+          <b>Service:</b> ${service.replace(/_/g, ' ')}<br>
+          <b>Destination:</b> ${country}<br>
+          <b>Chargeable Weight:</b> ${roundedWeight.toFixed(1)}kg<br>
+          <b>Price:</b> ₩${applicableRate.price.toLocaleString()}
+        `;
+        resultDiv.style.color = 'green';
       }
-
-      resultDiv.innerHTML = `
-        Service: <b>${service}</b><br>
-        Destination: <b>${country}</b><br>
-        Real Weight: <b>${realWeight.toFixed(2)}kg</b><br>
-        Volumetric Weight: <b>${volumetricWeight.toFixed(2)}kg</b><br>
-        <span style="color: blue">⚖ Final Chargeable Weight: <b>${finalWeight.toFixed(2)}kg</b></span><br>
-        Price: <b>₩${applicableRate.price}</b>
-      `;
-      resultDiv.style.color = 'green';
     }
   </script>
+  
 </body>
 </html>

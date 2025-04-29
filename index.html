@@ -99,7 +99,7 @@
   
         for (const line of lines) {
           const cols = line.split(',');
-          const country = cols[countryIdx].trim(); // important: trim here
+          const country = cols[countryIdx].replace(/^"|"$/g, '').trim();
           const weight = parseFloat(cols[weightIdx]);
           const ems = parseFloat(cols[emsIdx]);
           const emspre = parseFloat(cols[emspreIdx]);
